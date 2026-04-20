@@ -14,6 +14,7 @@ pub enum SparkEvent {
     ReceiverTransfer(Box<Transfer>),
     SenderTransfer(Box<Transfer>),
     Deposit(Box<TreeNode>),
+    TokenTransaction,
 }
 
 impl Display for SparkEvent {
@@ -28,6 +29,7 @@ impl Display for SparkEvent {
                 write!(f, "SenderTransfer({})", transfer.id)
             }
             SparkEvent::Deposit(deposit) => write!(f, "Deposit({})", deposit.id),
+            SparkEvent::TokenTransaction => write!(f, "TokenTransaction"),
         }
     }
 }

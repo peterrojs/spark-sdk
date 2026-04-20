@@ -2135,6 +2135,9 @@ impl BackgroundProcessor {
                         SparkEvent::Deposit(deposit) => self.process_deposit_event(*deposit).await,
                         SparkEvent::Connected => self.process_connected_event().await,
                         SparkEvent::Disconnected => self.process_disconnected_event().await,
+                        SparkEvent::TokenTransaction => {
+                            self.process_token_transaction_event().await
+                        }
                     };
                     debug!("Processed event: {event}");
 
@@ -2285,6 +2288,12 @@ impl BackgroundProcessor {
     async fn process_disconnected_event(&self) -> Result<(), SparkWalletError> {
         self.event_manager
             .notify_listeners(WalletEvent::StreamDisconnected);
+        Ok(())
+    }
+
+    async fn process_token_transaction_event(&self) -> Result<(), SparkWalletError> {
+        self.token_service.refresh_tokens_outputs().await?;
+        self.event_manager.notify_listeners(WalletEvent::Synced);
         Ok(())
     }
 
