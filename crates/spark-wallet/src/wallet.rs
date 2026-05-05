@@ -1352,6 +1352,7 @@ impl SparkWallet {
         outputs: Vec<TransferTokenOutput>,
         selected_outputs: Option<Vec<TokenOutputWithPrevOut>>,
         selection_strategy: Option<SelectionStrategy>,
+        execute_before_unix_micros: Option<i64>,
     ) -> Result<TokenTransaction, SparkWalletError> {
         if outputs.iter().any(|o| o.spark_invoice.is_some()) {
             return Err(SparkWalletError::Generic(
@@ -1369,7 +1370,12 @@ impl SparkWallet {
 
         let tx = self
             .token_service
-            .transfer_tokens_v3(outputs, selected_outputs, selection_strategy)
+            .transfer_tokens_v3(
+                outputs,
+                selected_outputs,
+                selection_strategy,
+                execute_before_unix_micros,
+            )
             .await?;
         Ok(tx)
     }
@@ -1563,9 +1569,17 @@ impl SparkWallet {
                     "Amount is required when invoice does not include an amount".to_string(),
                 ))?;
 
+                // Convert invoice expiry_time to execute_before for the token transaction.
+                // This sets a signed deadline so the SO rejects fulfillment after expiry.
+                let execute_before_unix_micros = invoice_fields.expiry_time.and_then(|t| {
+                    t.duration_since(UNIX_EPOCH)
+                        .ok()
+                        .and_then(|d| i64::try_from(d.as_micros()).ok())
+                });
+
                 let tx = self
                     .token_service
-                    .transfer_tokens(
+                    .transfer_tokens_v3(
                         vec![TransferTokenOutput {
                             token_id: token_identifier.clone(),
                             amount,
@@ -1574,6 +1588,7 @@ impl SparkWallet {
                         }],
                         None,
                         None,
+                        execute_before_unix_micros,
                     )
                     .await?;
 
